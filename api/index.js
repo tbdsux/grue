@@ -104,7 +104,5 @@ app.get('/:shortlink', (req, res) => {
     })
 })
 
-// listen and start the app
-app.listen(port, () => {
-  console.log(`Listening at http://localhost:${port}`)
-})
+// export the app
+module.exports = app
