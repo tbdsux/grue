@@ -4,12 +4,10 @@ require('dotenv').config()
 // main express
 const express = require('express')
 const app = express()
-const port = 3000
 
 // other required
 const path = require('path')
 const bodyParser = require('body-parser')
-const util = require('util')
 
 // nanoid for random short link generator
 const { nanoid } = require('nanoid')
@@ -29,6 +27,11 @@ app.use(bodyParser.urlencoded({ extended: true }))
 
 // require the database connection
 var db = require('./db')
+
+// check if the env is set
+if (!process.env.MONGO_DB) {
+  console.log('The MONGO_DB environment variable is not set!')
+}
 
 // connect to the database
 db.connect(process.env.MONGO_DB, function (err) {
