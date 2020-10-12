@@ -86,7 +86,7 @@ app.post('/', (req, res) => {
 
 // redirect from the shortlink
 app.get('/:shortlink', (req, res) => {
-  const short = req.params['shortlink']
+  const { short } = req.params
 
   const links = db.get().collection('ShortLinks')
   links
