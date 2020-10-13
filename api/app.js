@@ -25,42 +25,55 @@ app.use(express.urlencoded({ extended: false }))
 app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.urlencoded({ extended: true }))
 
-// require the database connection
-var db = require('./db')
+// setup the database connection
+const MongoClient = require('mongodb').MongoClient
+
+let cachedDb = null
+
+// connect to the database
+async function connectToDB() {
+  if (cachedDb) {
+    return cachedDb
+  }
+
+  const client = await MongoClient.connect(process.env.MONGO_DB, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+
+  const db = await client.db('GrueLinks')
+
+  // cache the database and return the connection
+  cachedDb = db
+  return db
+}
 
 // check if the env is set
 if (!process.env.MONGO_DB) {
   console.log('The MONGO_DB environment variable is not set!')
 }
 
-// connect to the database
-db.connect(process.env.MONGO_DB, function (err) {
-  if (err) {
-    console.log('Unable to connect to the database')
-    process.exit(1)
-  } else {
-    console.log('Connected to the Database!')
-  }
-})
-
 // set the webapp title
 const websiteTitle = 'Grue | Simple URL Shortener'
 
 // default index route
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   res.render('index', { title: websiteTitle })
 })
 
 // main route to generate a short link
-app.post('/', (req, res) => {
+app.post('/', async (req, res) => {
   // get the link query parameter
   const link = req.body['grue-link']
 
   // get the shortlink
   const short = nanoid(5)
 
+  // connect to the db
+  const db = await connectToDB()
+
   // initialize the data
-  const links = db.get().collection('ShortLinks')
+  const links = await db.collection('ShortLinks')
   const url = {
     grue_url: link,
     short: short,
@@ -88,10 +101,13 @@ app.post('/', (req, res) => {
 })
 
 // redirect from the shortlink
-app.get('/:shortlink', (req, res) => {
+app.get('/:shortlink', async (req, res) => {
   const { short } = req.params
 
-  const links = db.get().collection('ShortLinks')
+  // connect to the db
+  const db = await connectToDB()
+
+  const links = await db.collection('ShortLinks')
   links
     .findOne({ short: short })
     .then((result) => {
