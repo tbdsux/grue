@@ -30,7 +30,7 @@ const MongoClient = require('mongodb').MongoClient
 
 let cachedDb = null
 
-// connect to the database
+// connect to the database (serveless setup)
 async function connectToDB() {
   if (cachedDb) {
     return cachedDb
@@ -102,13 +102,13 @@ app.post('/', async (req, res) => {
 
 // redirect from the shortlink
 app.get('/:shortlink', async (req, res) => {
+  // get the shortlink
   const short = req.params['shortlink']
-
-  console.log(short)
 
   // connect to the db
   const db = await connectToDB()
 
+  // get the data from the database if exists
   const links = await db.collection('ShortLinks')
   links
     .findOne({ short: short })
