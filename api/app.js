@@ -102,7 +102,9 @@ app.post('/', async (req, res) => {
 
 // redirect from the shortlink
 app.get('/:shortlink', async (req, res) => {
-  const { short } = req.params
+  const short = req.params['shortlink']
+
+  console.log(short)
 
   // connect to the db
   const db = await connectToDB()
