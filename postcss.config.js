@@ -1,6 +1,6 @@
 const purgecss = require('@fullhuman/postcss-purgecss')({
   // Specify the paths to all of the template files in your project
-  content: ['./views/**/*.twig'],
+  content: ['./api/views/**/*.twig'],
 
   // This is the function used to extract class names from your templates
   defaultExtractor: (content) => {

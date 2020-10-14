@@ -17,6 +17,7 @@
     "cssnano": "^4.1.10",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "express-validator": "^6.6.1",
     "http-errors": "^1.8.0",
     "moment": "^2.29.1",
     "mongodb": "^3.6.2",

@@ -56,86 +56,132 @@ if (!process.env.MONGO_DB) {
 // set the webapp title
 const websiteTitle = 'Grue | Simple URL Shortener'
 
+// for validation of the url
+const { body, validationResult } = require('express-validator')
+
 // default index route
 app.get('/', async (req, res) => {
   res.render('index', { title: websiteTitle })
 })
 
 // main route to generate a short link
-app.post('/', async (req, res) => {
-  // get the link query parameter
-  const link = req.body['grue-link']
+app.post(
+  '/',
+  [body('grue-link').isURL().trim().withMessage('Invalid URL!')],
+  async (req, res) => {
+    // get the link query parameter
+    const link = req.body['grue-link']
 
-  // get the shortlink
-  const short = nanoid(5)
+    // check if the link exists
+    if (link) {
+      // get the errors
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        res.render('index', {
+          title: websiteTitle,
+          errors: errors,
+        })
+      } else {
+        // get the shortlink
+        const short = nanoid(5)
 
-  // connect to the db
-  const db = await connectToDB()
+        // connect to the db
+        const db = await connectToDB()
 
-  // initialize the data
-  const links = await db.collection('ShortLinks')
-  const url = {
-    grue_url: link,
-    short: short,
-    date: moment().format(),
-  }
+        // initialize the data
+        const links = await db.collection('ShortLinks')
+        const url = {
+          grue_url: link,
+          short: short,
+          date: moment().format(),
+        }
 
-  // insert the data to the database
-  links
-    .insertOne(url)
-    .then((result) => {
-      const success = 'Successfully shortened the long url!'
-      const output = {
-        link: req.protocol + '://' + req.get('host') + '/' + short,
-        redirect: link,
+        // insert the data to the database
+        links
+          .insertOne(url)
+          .then((result) => {
+            const success = 'Successfully shortened the long url!'
+            const output = {
+              link: req.protocol + '://' + req.get('host') + '/' + short,
+              redirect: link,
+            }
+            res.render('index', {
+              title: websiteTitle,
+              success: success,
+              output: output,
+            })
+          })
+          .catch((error) => {
+            console.error(error)
+          })
+      }
+    } else {
+      const errors = {
+        errors: [
+          {
+            msg: 'Please enter a URL!',
+          },
+        ],
       }
       res.render('index', {
         title: websiteTitle,
-        success: success,
-        output: output,
+        errors: errors,
       })
-    })
-    .catch((error) => {
-      console.error(error)
-    })
-})
+    }
+  },
+)
 
 // make an api for the post form
-app.post('/api/generate', async (req, res) => {
-  // get the request link
-  const reqLink = req.body['grue-link']
+app.post(
+  '/api/generate',
+  [body('grue-link').isURL().trim().withMessage('Invalid URL!')],
+  async (req, res) => {
+    // get the request link
+    const reqLink = req.body['grue-link']
 
-  // generate the random string
-  const short = nanoid(5)
-
-  // connect to the database
-  const db = await connectToDB()
-
-  // generate a shortlink
-  const links = await db.collection('ShortLinks')
-  const url = {
-    grue_url: reqLink,
-    short: short,
-    date: moment().format(),
-  }
-
-  // insert the data to the database
-  links
-    .insertOne(url)
-    .then((result) => {
-      // get the output
-      const output = {
-        link: 'https://grue.cf/' + short,
-        redirect: reqLink,
+    // continue if the request link is not empty
+    if (reqLink) {
+      // get the errors, send them if there is
+      const errors = validationResult(req)
+      if (!errors.isEmpty()) {
+        res.send({ error: 'Invalid URL!' })
       }
 
-      // send the json
-      res.send(output)
-    })
-    .catch((error) => {
-      res.send('There was a problem with your request.')
-    })
-})
+      // generate the random string
+      const short = nanoid(5)
+
+      // connect to the database
+      const db = await connectToDB()
+
+      // generate a shortlink
+      const links = await db.collection('ShortLinks')
+      const url = {
+        grue_url: reqLink,
+        short: short,
+        date: moment().format(),
+      }
+
+      // insert the data to the database
+      links
+        .insertOne(url)
+        .then((result) => {
+          // get the output
+          const output = {
+            link: 'https://grue.cf/' + short,
+            redirect: reqLink,
+          }
+
+          // send the json
+          res.send(output)
+        })
+        .catch((error) => {
+          res.send('There was a problem with your request.')
+        })
+    } else {
+      res.send({}) // return nothing if the request is empty
+    }
+  },
+)
 
 // redirect from the shortlink
 app.get('/:shortlink', async (req, res) => {

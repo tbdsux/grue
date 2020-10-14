@@ -9,6 +9,19 @@
         {{ title }}
       </h1>
     </div>
+
+    {% if errors %}
+      <!-- start - errors message container -->
+      <div class="py-3">
+        {% for error in errors.errors %}
+          <p class="bg-red-500 p-1 text-white tracking-wide text-center rounded-md">
+            {{ error.msg }}
+          </p>
+        {% endfor %}
+      </div>
+      <!-- end - errors message container -->
+    {% endif %}
+
     {% if success %}
       <!-- start - success message container -->
       <div class="py-3">
@@ -26,7 +39,8 @@
           <input type="text"
             name="grue-link"
             class="text-center my-2 p-3 w-full border-2 rounded md:text-lg font-light tracking-wide outline-none focus:border-green-600 text-green-600"
-            placeholder="Enter a very long url in here..." />
+            placeholder="Enter a very long url in here..."
+            required />
         </div>
         <div class="flex flex-col items-center w-full">
           <input type="submit"
