@@ -100,6 +100,43 @@ app.post('/', async (req, res) => {
     })
 })
 
+// make an api for the post form
+app.post('/api/generate', async (req, res) => {
+  // get the request link
+  const reqLink = req.body['grue-link']
+
+  // generate the random string
+  const short = nanoid(5)
+
+  // connect to the database
+  const db = await connectToDB()
+
+  // generate a shortlink
+  const links = await db.collection('ShortLinks')
+  const url = {
+    grue_url: reqLink,
+    short: short,
+    date: moment().format(),
+  }
+
+  // insert the data to the database
+  links
+    .insertOne(url)
+    .then((result) => {
+      // get the output
+      const output = {
+        link: 'https://grue.cf/' + short,
+        redirect: reqLink,
+      }
+
+      // send the json
+      res.send(output)
+    })
+    .catch((error) => {
+      res.send('There was a problem with your request.')
+    })
+})
+
 // redirect from the shortlink
 app.get('/:shortlink', async (req, res) => {
   // get the shortlink
