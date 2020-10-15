@@ -4,6 +4,8 @@
 
 A Simple URL Shortener
 
+**For now, if there are some changes with the data that are being stored in the database, all of the data before the new update might have been removed.**
+
 ### Tech
 
 - **Express JS**
