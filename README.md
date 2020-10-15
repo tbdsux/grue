@@ -1,3 +1,5 @@
+![Website Icon](https://img.icons8.com/flat_round/64/000000/crane-hook.png)
+
 # grue
 
 A Simple URL Shortener
@@ -21,6 +23,10 @@ git clone https://github.com/TheBoringDude/grue.git
 ```
 vercel dev
 ```
+
+#### Website Icon:
+
+Since this is just a simple app and is not for commercial, I used an icon from Icons8.
 
 #### Made By:
 
