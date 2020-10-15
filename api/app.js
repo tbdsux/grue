@@ -93,7 +93,9 @@ app.post(
         const url = {
           grue_url: link,
           short: short,
-          date: moment().format(),
+          date: moment().utc().format(),
+          last_visit: moment().utc().format(),
+          remove_dt: moment().add(30, 'd').utc().format(),
         }
 
         // insert the data to the database
@@ -158,7 +160,9 @@ app.post(
       const url = {
         grue_url: reqLink,
         short: short,
-        date: moment().format(),
+        date: moment().utc().format(),
+        last_visit: moment().utc().format(),
+        remove_dt: moment().add(30, 'd').utc().format(),
       }
 
       // insert the data to the database
@@ -175,6 +179,7 @@ app.post(
           res.send(output)
         })
         .catch((error) => {
+          console.error(error)
           res.send('There was a problem with your request.')
         })
     } else {
@@ -196,9 +201,24 @@ app.get('/:shortlink', async (req, res) => {
   links
     .findOne({ short: short })
     .then((result) => {
-      // redirect it the the long url if not null
+      // change the latest visit and redirect
       if (result) {
-        res.redirect(result.grue_url)
+        links
+          .updateOne(
+            { short: short },
+            {
+              $set: {
+                last_visit: moment().utc().format(),
+                remove_dt: moment().add(30, 'd').utc().format(),
+              },
+            },
+          )
+          .then((upres) => {
+            res.redirect(result.grue_url) // redirect after updating the record
+          })
+          .catch((error) => {
+            console.error(error)
+          })
       } else {
         res.render('404') // render the 404 if null
       }
@@ -207,6 +227,9 @@ app.get('/:shortlink', async (req, res) => {
       console.error(error)
     })
 })
+
+// worker / deleter api (this will be called through a cron job)
+app.post('/worker/clean/database', async (req, res) => {})
 
 // export the app
 module.exports = app
