@@ -25,33 +25,14 @@ app.use(express.urlencoded({ extended: false }))
 app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.urlencoded({ extended: true }))
 
-// setup the database connection
-const MongoClient = require('mongodb').MongoClient
-
-let cachedDb = null
-
-// connect to the database (serveless setup)
-async function connectToDB() {
-  if (cachedDb) {
-    return cachedDb
-  }
-
-  const client = await MongoClient.connect(process.env.MONGO_DB, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-
-  const db = await client.db('GrueLinks')
-
-  // cache the database and return the connection
-  cachedDb = db
-  return db
-}
-
 // check if the env is set
 if (!process.env.MONGO_DB) {
   console.log('The MONGO_DB environment variable is not set!')
+  process.exit(0) // exit
 }
+
+// require the database connection
+const ConDB = require('./db')
 
 // set the webapp title
 const websiteTitle = 'Grue | Simple URL Shortener'
@@ -86,7 +67,7 @@ app.post(
         const short = nanoid(5)
 
         // connect to the db
-        const db = await connectToDB()
+        const db = await ConDB()
 
         // initialize the data
         const links = await db.collection('ShortLinks')
@@ -153,7 +134,7 @@ app.post(
       const short = nanoid(5)
 
       // connect to the database
-      const db = await connectToDB()
+      const db = await ConDB()
 
       // generate a shortlink
       const links = await db.collection('ShortLinks')
@@ -194,7 +175,7 @@ app.get('/:shortlink', async (req, res) => {
   const short = req.params['shortlink']
 
   // connect to the db
-  const db = await connectToDB()
+  const db = await ConDB()
 
   // get the data from the database if exists
   const links = await db.collection('ShortLinks')
