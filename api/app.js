@@ -15,6 +15,9 @@ const { nanoid } = require('nanoid')
 // date parser
 const moment = require('moment')
 
+// time to run the worker
+const removerTime = moment('4:00:00 pm', 'hh:mm:ss a').format('hh:mm:ss a')
+
 // set the view engine
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'twig')
@@ -210,7 +213,36 @@ app.get('/:shortlink', async (req, res) => {
 })
 
 // worker / deleter api (this will be called through a cron job)
-app.post('/worker/clean/database', async (req, res) => {})
+app.get('/worker/clean/database', async (req, res) => {
+  // get the date and time
+  const time = moment().utc().format('hh:mm:ss a')
+  const today = moment().utc().format()
+
+  if (time === removerTime) {
+    const db = await ConDB()
+
+    const links = await db.collection('ShortLinks')
+
+    // query all of the links
+    links.find().toArray(function (err, shlinks) {
+      shlinks.map((i) => {
+        if (moment(today).isAfter(i.remove_dt)) {
+          // if the link has expired, delete it
+          try {
+            links.deleteOne(i)
+          } catch (e) {
+            console.error(e) // log if there was a problem
+          }
+        }
+      })
+
+      // send a success message
+      res.send('The deletion of expired links was successful.')
+    })
+  } else {
+    res.send('Today is not the time. :)')
+  }
+})
 
 // export the app
 module.exports = app
