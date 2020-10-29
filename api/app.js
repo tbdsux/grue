@@ -8,12 +8,17 @@ const app = express()
 // other required
 const path = require('path')
 const bodyParser = require('body-parser')
+const cookieParser = require('cookie-parser')
 
 // nanoid for random short link generator
 const { nanoid } = require('nanoid')
 
 // date parser
 const moment = require('moment')
+
+// csurf
+const csurf = require('csurf')
+const csrfProtection = csurf({ cookie: true })
 
 // time to run the worker
 const removerTime = moment('4:00:00 pm', 'hh:mm:ss a').format('hh:mm:ss a')
@@ -27,6 +32,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(express.static(path.join(__dirname, 'public')))
 app.use(bodyParser.urlencoded({ extended: true }))
+app.use(cookieParser())
 
 // check if the env is set
 if (!process.env.MONGO_DB) {
@@ -44,13 +50,14 @@ const websiteTitle = 'Grue | Simple URL Shortener'
 const { body, validationResult } = require('express-validator')
 
 // default index route
-app.get('/', async (req, res) => {
-  res.render('index', { title: websiteTitle })
+app.get('/', csrfProtection, async (req, res) => {
+  res.render('index', { title: websiteTitle, csrfToken: req.csrfToken() })
 })
 
 // main route to generate a short link
 app.post(
   '/',
+  csrfProtection,
   [body('grue-link').isURL().trim().withMessage('Invalid URL!')],
   async (req, res) => {
     // get the link query parameter
@@ -95,6 +102,7 @@ app.post(
               title: websiteTitle,
               success: success,
               output: output,
+              csrfToken: req.csrfToken(),
             })
           })
           .catch((error) => {
@@ -120,6 +128,7 @@ app.post(
 // make an api for the post form
 app.post(
   '/api/generate',
+  csrfProtection,
   [body('grue-link').isURL().trim().withMessage('Invalid URL!')],
   async (req, res) => {
     // get the request link

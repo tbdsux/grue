@@ -34,6 +34,7 @@
     <!-- form content -->
     <div>
       <form action="/" name="shorten-form" method="post">
+        <input type="hidden" name="_csrf" value="{{ csrfToken }}" />
         <div class="flex flex-col items-center py-2 w-full">
           <label for="long-link">Enter a Long URL to Shorten:</label>
           <input type="text"
