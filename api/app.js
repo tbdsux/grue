@@ -21,7 +21,7 @@ const csurf = require('csurf')
 const csrfProtection = csurf({ cookie: true })
 
 // time to run the worker
-const removerTime = moment('4:00:00 pm', 'hh:mm:ss a').format('hh:mm:ss a')
+const removerTime = moment('4:00:00 pm', 'hh:mm:ss a').format('hh a')
 
 // set the view engine
 app.set('views', path.join(__dirname, 'views'))
@@ -253,12 +253,12 @@ app.get('/:shortlink', async (req, res) => {
 // worker / deleter api (this will be called through a cron job)
 app.get('/worker/clean/database', async (req, res) => {
   // get the date and time
-  const time = moment().utc().format('hh:mm:ss a')
+  const time = moment().utc().format('hh a')
   const today = moment().utc().format()
 
   if (time === removerTime) {
+    // initialize db
     const db = await ConDB()
-
     const links = await db.collection('ShortLinks')
 
     // query all of the links
