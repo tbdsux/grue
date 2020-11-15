@@ -78,26 +78,49 @@ app.post(
 
         // connect to the db
         const db = await ConDB()
-
-        // initialize the data
         const links = await db.collection('ShortLinks')
-        const url = {
-          grue_url: link,
-          short: short,
-          date: moment().utc().format(),
-          last_visit: moment().utc().format(),
-          remove_dt: moment().add(30, 'd').utc().format(),
-        }
 
-        // insert the data to the database
+        // find if the url exists in the db
         links
-          .insertOne(url)
+          .findOne({ grue_url: link })
           .then((result) => {
             const success = 'Successfully shortened the long url!'
-            const output = {
-              link: req.protocol + '://' + req.get('host') + '/' + short,
-              redirect: link,
+            let output = {}
+
+            // if the url to shorten already exist in the database
+            if (result) {
+              // set the output
+              output = {
+                link:
+                  req.protocol + '://' + req.get('host') + '/' + result.short,
+                redirect: link,
+              }
+            } else {
+              // initialize the data
+              const url = {
+                grue_url: link,
+                short: short,
+                date: moment().utc().format(),
+                last_visit: moment().utc().format(),
+                remove_dt: moment().add(30, 'd').utc().format(),
+              }
+
+              // insert the data to the database
+              links
+                .insertOne(url)
+                .then((result) => {
+                  // set the output
+                  output = {
+                    link: req.protocol + '://' + req.get('host') + '/' + short,
+                    redirect: link,
+                  }
+                })
+                .catch((error) => {
+                  console.error(error) // log errors
+                })
             }
+
+            // render
             res.render('index', {
               title: websiteTitle,
               success: success,
@@ -106,7 +129,7 @@ app.post(
             })
           })
           .catch((error) => {
-            console.error(error)
+            console.error(error) // log errors
           })
       }
     } else {
