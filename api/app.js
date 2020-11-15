@@ -73,9 +73,6 @@ app.post(
           errors: errors,
         })
       } else {
-        // get the shortlink
-        const short = nanoid(5)
-
         // connect to the db
         const db = await ConDB()
         const links = await db.collection('ShortLinks')
@@ -95,7 +92,17 @@ app.post(
                   req.protocol + '://' + req.get('host') + '/' + result.short,
                 redirect: link,
               }
+              // render
+              res.render('index', {
+                title: websiteTitle,
+                success: success,
+                output: output,
+                csrfToken: req.csrfToken(),
+              })
             } else {
+              // get the shortlink
+              const short = nanoid(5)
+
               // initialize the data
               const url = {
                 grue_url: link,
@@ -114,19 +121,18 @@ app.post(
                     link: req.protocol + '://' + req.get('host') + '/' + short,
                     redirect: link,
                   }
+                  // render
+                  res.render('index', {
+                    title: websiteTitle,
+                    success: success,
+                    output: output,
+                    csrfToken: req.csrfToken(),
+                  })
                 })
                 .catch((error) => {
                   console.error(error) // log errors
                 })
             }
-
-            // render
-            res.render('index', {
-              title: websiteTitle,
-              success: success,
-              output: output,
-              csrfToken: req.csrfToken(),
-            })
           })
           .catch((error) => {
             console.error(error) // log errors
