@@ -34,6 +34,9 @@ if (!process.env.MONGO_DB) {
 // require the database connection
 const ConDB = require('./db')
 
+// date parser
+const moment = require('moment')
+
 // require the generator
 const generator = require('./generator')
 
