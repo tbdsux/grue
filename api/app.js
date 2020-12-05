@@ -10,18 +10,9 @@ const path = require('path')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 
-// nanoid for random short link generator
-const { nanoid } = require('nanoid')
-
-// date parser
-const moment = require('moment')
-
 // csurf
 const csurf = require('csurf')
 const csrfProtection = csurf({ cookie: true })
-
-// time to run the worker
-const removerTime = moment('4:00:00 pm', 'hh:mm:ss a').format('hh a')
 
 // set the view engine
 app.set('views', path.join(__dirname, 'views'))
@@ -42,6 +33,9 @@ if (!process.env.MONGO_DB) {
 
 // require the database connection
 const ConDB = require('./db')
+
+// require the generator
+const generator = require('./generator')
 
 // set the webapp title
 const websiteTitle = 'Grue | Simple URL Shortener'
@@ -80,7 +74,7 @@ app.post(
         // find if the url exists in the db
         links
           .findOne({ grue_url: link })
-          .then((result) => {
+          .then(async (result) => {
             const success = 'Successfully shortened the long url!'
             let output = {}
 
@@ -88,8 +82,7 @@ app.post(
             if (result) {
               // set the output
               output = {
-                link:
-                  req.protocol + '://' + req.get('host') + '/' + result.short,
+                link: process.env.DOMAIN_URL + result.short,
                 redirect: link,
               }
               // render
@@ -100,25 +93,16 @@ app.post(
                 csrfToken: req.csrfToken(),
               })
             } else {
-              // get the shortlink
-              const short = nanoid(5)
-
-              // initialize the data
-              const url = {
-                grue_url: link,
-                short: short,
-                date: moment().utc().format(),
-                last_visit: moment().utc().format(),
-                remove_dt: moment().add(30, 'd').utc().format(),
-              }
+              // generate the shortlink
+              const url = await generator(link)
 
               // insert the data to the database
               links
                 .insertOne(url)
-                .then((result) => {
+                .then((_) => {
                   // set the output
                   output = {
-                    link: req.protocol + '://' + req.get('host') + '/' + short,
+                    link: process.env.DOMAIN_URL + url.short,
                     redirect: link,
                   }
                   // render
@@ -154,10 +138,9 @@ app.post(
   },
 )
 
-// make an api for the post form
+// AN EXTERNAL API FOR USING THIS FOR OTHER PURPOSES
 app.post(
   '/api/generate',
-  csrfProtection,
   [body('grue-link').isURL().trim().withMessage('Invalid URL!')],
   async (req, res) => {
     // get the request link
@@ -171,38 +154,52 @@ app.post(
         res.send({ error: 'Invalid URL!' })
       }
 
-      // generate the random string
-      const short = nanoid(5)
-
       // connect to the database
       const db = await ConDB()
 
       // generate a shortlink
       const links = await db.collection('ShortLinks')
-      const url = {
-        grue_url: reqLink,
-        short: short,
-        date: moment().utc().format(),
-        last_visit: moment().utc().format(),
-        remove_dt: moment().add(30, 'd').utc().format(),
-      }
 
-      // insert the data to the database
+      // check if the requested url already exists
       links
-        .insertOne(url)
-        .then((result) => {
-          // get the output
-          const output = {
-            link: 'https://grue.cf/' + short,
-            redirect: reqLink,
-          }
+        .findOne({ grue_url: reqLink })
+        .then(async (result) => {
+          let output = {}
 
-          // send the json
-          res.send(output)
+          if (result) {
+            // set the output
+            output = {
+              link: process.env.DOMAIN_URL + result.short,
+              redirect: reqLink,
+            }
+
+            // send the output
+            res.send(output)
+          } else {
+            // generate the shortlink
+            const url = await generator(reqLink)
+
+            // insert the data to the database
+            links
+              .insertOne(url)
+              .then((_) => {
+                // get the output
+                output = {
+                  link: process.env.DOMAIN_URL + url.short,
+                  redirect: reqLink,
+                }
+
+                // send the json
+                res.send(output)
+              })
+              .catch((error) => {
+                console.error(error)
+                res.send('There was a problem with your request.')
+              })
+          }
         })
         .catch((error) => {
           console.error(error)
-          res.send('There was a problem with your request.')
         })
     } else {
       res.send({}) // return nothing if the request is empty
@@ -231,11 +228,10 @@ app.get('/:shortlink', async (req, res) => {
             {
               $set: {
                 last_visit: moment().utc().format(),
-                remove_dt: moment().add(30, 'd').utc().format(),
               },
             },
           )
-          .then((upres) => {
+          .then((_) => {
             res.redirect(result.grue_url) // redirect after updating the record
           })
           .catch((error) => {
@@ -248,38 +244,6 @@ app.get('/:shortlink', async (req, res) => {
     .catch((error) => {
       console.error(error)
     })
-})
-
-// worker / deleter api (this will be called through a cron job)
-app.get('/worker/clean/database', async (req, res) => {
-  // get the date and time
-  const time = moment().utc().format('hh a')
-  const today = moment().utc().format()
-
-  if (time === removerTime) {
-    // initialize db
-    const db = await ConDB()
-    const links = await db.collection('ShortLinks')
-
-    // query all of the links
-    links.find().toArray(function (err, shlinks) {
-      shlinks.map((i) => {
-        if (moment(today).isAfter(i.remove_dt)) {
-          // if the link has expired, delete it
-          try {
-            links.deleteOne(i)
-          } catch (e) {
-            console.error(e) // log if there was a problem
-          }
-        }
-      })
-
-      // send a success message
-      res.send('The deletion of expired links was successful.')
-    })
-  } else {
-    res.send('Today is not the time. :)')
-  }
 })
 
 // export the app

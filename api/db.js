@@ -1,3 +1,6 @@
+// initialize the .env config file
+require('dotenv').config()
+
 // setup the database connection
 const MongoClient = require('mongodb').MongoClient
 
@@ -14,7 +17,7 @@ module.exports = async function connectToDB() {
     useUnifiedTopology: true,
   })
 
-  const db = await client.db('GrueLinks')
+  const db = await client.db(process.env.DB_NAME)
 
   // cache the database and return the connection
   cachedDb = db
